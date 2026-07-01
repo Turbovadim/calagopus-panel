@@ -187,8 +187,6 @@ const svgCountryFlagsDir = normalizePath(
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    // Must run before Vite's built-in tsconfig-paths resolver (`resolve.tsconfigPaths` below), which
-    // otherwise claims `@/*` first - see the load-bearing-assumption note on extensionOverrides().
     extensionOverrides(),
     react(),
     babel(

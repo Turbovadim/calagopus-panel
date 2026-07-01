@@ -3,10 +3,6 @@ import path from 'node:path';
 import type { Plugin } from 'vite';
 import { parseSync } from 'vite';
 
-// frontend/extensions/<identifier> is a compat symlink into backend-extensions/<identifier>/frontend
-// (see backend/src/commands/extensions/mod.rs::create_compat_links), so every path derived from it is
-// realpath-normalized before being used as a map key, compared for identity, or handed to the watcher -
-// otherwise the symlink alias and its real location would be treated as two different files.
 const FRONTEND_ROOT = path.resolve(__dirname, '..');
 const CORE_SRC = path.join(FRONTEND_ROOT, 'src');
 const EXTENSIONS_DIR = path.join(FRONTEND_ROOT, 'extensions');
@@ -52,10 +48,6 @@ function listExtensionIdentifiers(): string[] {
   return fs.readdirSync(EXTENSIONS_DIR).filter((identifier) => identifier !== 'shared');
 }
 
-// overrides.ts only ever contains `import ...` declarations and `defineOverride(A, B)` calls, so a
-// generic walk that (1) maps local import names to their source specifiers and (2) finds
-// `defineOverride` call expressions referencing two of those names is enough - no need to special-case
-// the `export default [...]` shape.
 function readOverrideEntries(file: string): OverrideDeclaration[] {
   const source = fs.readFileSync(file, 'utf-8');
   const { program } = parseSync(file, source);
@@ -168,8 +160,6 @@ export function extensionOverrides(): Plugin {
     enforce: 'pre',
 
     config() {
-      // Real extension sources live in backend-extensions/<id>/frontend, outside the default
-      // workspace-root fs.allow (frontend/ itself, since that's where pnpm-workspace.yaml is found).
       return {
         server: {
           fs: {
@@ -182,11 +172,6 @@ export function extensionOverrides(): Plugin {
     buildStart() {
       map = buildOverrideMap((message) => this.error(`[extension-overrides] ${message}`));
     },
-
-    // Filtered natively (Rust side) to `@/...`/relative specifiers only, so the huge majority of
-    // resolutions in this app - bare npm specifiers and everything inside node_modules - never cross
-    // the JS bridge at all. Without this, a no-op `resolveId` on every module dominates build time
-    // simply from FFI call overhead (measured ~80% of plugin time on an empty override map).
     resolveId: {
       filter: { id: /^(@\/|\.{1,2}\/)/ },
       handler(source, importer, options) {
@@ -198,8 +183,6 @@ export function extensionOverrides(): Plugin {
         const hit = map.get(stripExt(realpathOrSelf(abs)));
         if (!hit) return null;
 
-        // The replacement wrapping the original (`import Original from '@/...'`) must resolve to the
-        // real core file, not back to itself.
         if (realpathOrSelf(importer) === hit.replacementReal) return null;
 
         return this.resolve(hit.replacementReal, importer, { ...options, skipSelf: true });
@@ -214,8 +197,6 @@ export function extensionOverrides(): Plugin {
         }
       }
 
-      // overrides.ts reshapes the module graph itself, so re-resolving a handful of modules on
-      // change isn't enough (stale resolutions are cached); restart, same as a vite.config.ts edit.
       const handleOverridesChange = (file: string) => {
         const real = realpathOrSelf(file);
         if (path.basename(real) !== 'overrides.ts') return;
