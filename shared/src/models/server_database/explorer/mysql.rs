@@ -123,7 +123,8 @@ const MYSQL_COLUMNS: &str = "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, COLUMN
     CAST(IS_NULLABLE = 'YES' AS SIGNED) AS nullable,
     CAST(COLUMN_KEY = 'PRI' AS SIGNED) AS primary_key,
     CAST(EXTRA LIKE '%auto_increment%' AS SIGNED) AS auto_increment,
-    CAST(EXTRA LIKE '%GENERATED%' AS SIGNED) AS is_generated,
+    CAST(EXTRA LIKE '%VIRTUAL GENERATED%' OR EXTRA LIKE '%STORED GENERATED%' AS SIGNED)
+        AS is_generated,
     CAST(DATA_TYPE IN ('binary', 'varbinary', 'bit', 'geometry') OR DATA_TYPE LIKE '%blob' AS SIGNED)
         AS binary_data
     FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME, ORDINAL_POSITION";
@@ -132,7 +133,8 @@ const MYSQL_TABLE_COLUMNS: &str = "SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_DEFAU
     CAST(IS_NULLABLE = 'YES' AS SIGNED) AS nullable,
     CAST(COLUMN_KEY = 'PRI' AS SIGNED) AS primary_key,
     CAST(EXTRA LIKE '%auto_increment%' AS SIGNED) AS auto_increment,
-    CAST(EXTRA LIKE '%GENERATED%' AS SIGNED) AS is_generated,
+    CAST(EXTRA LIKE '%VIRTUAL GENERATED%' OR EXTRA LIKE '%STORED GENERATED%' AS SIGNED)
+        AS is_generated,
     CAST(DATA_TYPE IN ('binary', 'varbinary', 'bit', 'geometry') OR DATA_TYPE LIKE '%blob' AS SIGNED)
         AS binary_data
     FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
